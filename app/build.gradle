@@ -25,4 +25,5 @@ dependencies {
     testCompile 'junit:junit:4.12'
     compile 'com.android.support:appcompat-v7:23.1.0'
     compile 'commons-io:commons-io:2.5'
+    compile 'com.rmtheis:tess-two:5.4.1'
 }
