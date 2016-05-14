@@ -6,16 +6,14 @@ import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.media.ExifInterface;
 import android.net.Uri;
-import android.os.Environment;
+import android.os.Bundle;
 import android.provider.MediaStore;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
-import android.widget.Toast;
-
-import com.googlecode.tesseract.android.TessBaseAPI;
+import android.widget.ImageView;
+import android.widget.TextView;
 
 import org.apache.commons.io.FileUtils;
 
@@ -65,63 +63,69 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
 
         if (requestCode == 0 && resultCode == RESULT_OK) {
+            // Should not happen
+            if (photoPath == null) {
+                return;
+            }
             File acquired = new File(photoPath);
             try {
                 FileUtils.readFileToByteArray(acquired);
                 Log.d(this.getLocalClassName(), "Picture acquired");
                 Log.d(this.getLocalClassName(), "Trying to OCR the picture ...");
-                Toast.makeText(this, doOcr(acquired.getAbsolutePath()),
-                        Toast.LENGTH_LONG).show();
+
+                String f = acquired.getAbsolutePath();
+
+                // Rotates if needed
+                ExifInterface exif = new ExifInterface(f);
+                int exifOrientation = exif.getAttributeInt(
+                        ExifInterface.TAG_ORIENTATION,
+                        ExifInterface.ORIENTATION_NORMAL);
+                int rotate = 0;
+                switch (exifOrientation) {
+                    case ExifInterface.ORIENTATION_ROTATE_90:
+                        rotate = 90;
+                        break;
+                    case ExifInterface.ORIENTATION_ROTATE_180:
+                        rotate = 180;
+                        break;
+                    case ExifInterface.ORIENTATION_ROTATE_270:
+                        rotate = 270;
+                        break;
+                }
+                Bitmap bitmap = BitmapFactory.decodeFile(f);
+                if (rotate != 0) {
+                    int w = bitmap.getWidth();
+                    int h = bitmap.getHeight();
+                    Matrix mtx = new Matrix();
+                    mtx.preRotate(rotate);
+                    bitmap = Bitmap.createBitmap(bitmap, 0, 0, w, h, mtx, false);
+                }
+                bitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true);
+
+                ImageView imageView = (ImageView) findViewById(R.id.imageView);
+                imageView.setImageBitmap(
+                        Bitmap.createScaledBitmap(bitmap,
+                                320,
+                                200, false)
+                );
+                Button btn = (Button) findViewById(R.id.acquire);
+                TextView tv = (TextView) findViewById(R.id.editText);
+
+                new OcrTask(bitmap, btn, tv).execute((Object[]) null);
+
                 Log.d(this.getLocalClassName(), "Done.");
 
             } catch (IOException e) {
                 Log.e(this.getLocalClassName(), "Unable to read photo", e);
 
-            } finally {
+            } catch (Throwable throwable) {
+                Log.e(this.getLocalClassName(), "Other error occurred", throwable);
+            }
+
+            finally {
                 FileUtils.deleteQuietly(acquired);
             }
         }
-
     }
 
-    private String doOcr(String f) throws IOException {
-        ExifInterface exif = new ExifInterface(f);
-        int exifOrientation = exif.getAttributeInt(
-                ExifInterface.TAG_ORIENTATION,
-                ExifInterface.ORIENTATION_NORMAL);
-        int rotate = 0;
-        switch (exifOrientation) {
-            case ExifInterface.ORIENTATION_ROTATE_90:
-                rotate = 90;
-                break;
-            case ExifInterface.ORIENTATION_ROTATE_180:
-                rotate = 180;
-                break;
-            case ExifInterface.ORIENTATION_ROTATE_270:
-                rotate = 270;
-                break;
-        }
-        Bitmap bitmap = BitmapFactory.decodeFile(f);
-        if (rotate != 0) {
-            int w = bitmap.getWidth();
-            int h = bitmap.getHeight();
-
-            // Setting pre rotate
-            Matrix mtx = new Matrix();
-            mtx.preRotate(rotate);
-
-            // Rotating Bitmap & convert to ARGB_8888, required by tess
-            bitmap = Bitmap.createBitmap(bitmap, 0, 0, w, h, mtx, false);
-        }
-        bitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true);
-        TessBaseAPI baseApi = new TessBaseAPI();
-        // DATA_PATH = Path to the storage
-        // lang = for which the language data exists, usually "eng"
-        // TODO find a proper way to have the file somewhere on the device
-        baseApi.init("/mnt/sdcard/tesseract/tessdata/eng.traineddata", "eng");
-        baseApi.setImage(bitmap);
-        String recognizedText = baseApi.getUTF8Text();
-        baseApi.end();
-        return recognizedText;
-    }
 }
