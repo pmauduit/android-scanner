@@ -1,6 +1,7 @@
 package beneth.fr.androidscanner;
 
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
@@ -23,8 +24,7 @@ import java.io.IOException;
 public class MainActivity extends AppCompatActivity {
 
     private final File dir = new File(System.getenv("EXTERNAL_STORAGE") +
-        File.separator +
-            "android-scanner"
+        File.separator + "android-scanner"
     );
 
     private String photoPath;
@@ -37,7 +37,6 @@ public class MainActivity extends AppCompatActivity {
         Button capture = (Button) findViewById(R.id.acquire);
 
         dir.mkdirs();
-
         capture.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 try {
@@ -69,7 +68,6 @@ public class MainActivity extends AppCompatActivity {
             }
             File acquired = new File(photoPath);
             try {
-                FileUtils.readFileToByteArray(acquired);
                 Log.d(this.getLocalClassName(), "Picture acquired");
                 Log.d(this.getLocalClassName(), "Trying to OCR the picture ...");
 
@@ -127,5 +125,4 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     }
-
 }
